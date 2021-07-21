@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from dotenv import load_dotenv
 import os
+from flask_cors import CORS
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -17,13 +18,18 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
+    CORS(app)
     from app.models.city import City
     from app.models.col import Col
     from app.models.crimerate import Crimerate
     from app.models.attraction import Attraction
 
-        # Endpoints
+    # Endpoints
+    # Register Blueprints here
+    # from .routes import example_bp
     from .routes import hello_world_bp
+    from .routes import cities_bp
     app.register_blueprint(hello_world_bp)
+    app.register_blueprint(cities_bp)
 
     return app
