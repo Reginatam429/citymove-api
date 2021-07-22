@@ -48,8 +48,8 @@ def upgrade():
     op.create_table('crimerate',
     sa.Column('crimerate_id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('city_id', sa.Integer(), nullable=True),
-    sa.Column('crime_index', sa.Integer(), nullable=True),
-    sa.Column('safety_index', sa.Integer(), nullable=True),
+    sa.Column('crime_index', sa.DECIMAL(asdecimal=False), nullable=True),
+    sa.Column('safety_index', sa.DECIMAL(asdecimal=False), nullable=True),
     sa.ForeignKeyConstraint(['city_id'], ['city.city_id'], ),
     sa.PrimaryKeyConstraint('crimerate_id')
     )
