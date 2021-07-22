@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, make_response
 from app import db
 from .models.city import City
 from .models.col import Col
+from .models.crimerate import Crimerate
+from .models.attraction import Attraction
 from dotenv import load_dotenv
 # example_bp = Blueprint('example_bp', __name__)
 load_dotenv()
@@ -9,7 +11,7 @@ load_dotenv()
 hello_world_bp = Blueprint("hello_world", __name__)
 cities_bp = Blueprint("cities", __name__, url_prefix="/cities")
 cols_bp = Blueprint("cols", __name__, url_prefix="/cols")
-# crimerates_bp = Blueprint("crimerates", __name__, url_prefix="/crimerates")
+crimerates_bp = Blueprint("crimerates", __name__, url_prefix="/crimerates")
 # attractions_bp = Blueprint("attractions", __name__, url_prefix="/attractions")
 
 @hello_world_bp.route("/hello-world", methods=["GET"])
@@ -120,6 +122,32 @@ def get_all_col_by_city(city_id):
                     "col": results
                 }, 200)
 
+# Get all crimerate belonging to one city by ID
+@cities_bp.route("/<city_id>/crimerates", methods=["GET"])
+def get_all_crimerate_by_city(city_id):
+    city = City.query.get(city_id)
+    if city is None:
+        return make_response("", 404)
+
+    if request.method == "GET":
+        crimerates = Crimerate.query.filter(Crimerate.city_id == city_id).order_by(Crimerate.crimerate_id.desc())
+        results = []
+        for crimerate in crimerates:
+            print("~~~~~~~~~~~~~~~", crimerate.crimerate_id)
+            results.append({
+                "crimerate_id": crimerate.crimerate_id,
+                "city_id": crimerate.city_id,
+                "crime_index": crimerate.crime_index,
+                "safety_index": crimerate.safety_index  
+            })
+
+        return make_response(
+                {
+                    "city_id": city.city_id,
+                    "city_name": city.city_name,
+                    "crimerate": results
+                }, 200)
+
 #~~~~~~~~~~~~~~~~~~~col endpoints~~~~~~~~~~~~~~~~~~~
 # Create col | Get all cols
 @cols_bp.route("", methods=["POST", "GET"])
@@ -217,5 +245,82 @@ def handle_col(col_id):
                     "basic_utilities": col.basic_utilities,
                     "rent": col.rent,
                     "avg_monthly_salary": col.avg_monthly_salary
+                }
+        })
+
+#~~~~~~~~~~~~~~~~~~~crimerate endpoints~~~~~~~~~~~~~~~~~~~
+# Create crimerate | Get all crimerates
+@crimerates_bp.route("", methods=["POST", "GET"])
+def handle_crimerates():
+        if request.method == "GET":
+            crimerates = Crimerate.query.all()
+            crimerates_response = []
+            for crimerate in crimerates:
+                crimerates_response.append({
+                    "crimerate_id": crimerate.crimerate_id,
+                    "city_id": city.city_id,
+                    "crime_index": crimerate.crime_index,
+                    "safety_index": crimerate.safety_index
+                })
+            return jsonify(crimerates_response, 200)
+
+        elif request.method == "POST":
+            request_body = request.get_json()
+
+            if 'city_id' not in request_body or 'crime_index' not in request_body or 'safety_index' not in request_body:
+                return {"details": "Invalid data"}, 400
+            new_crimerate = Crimerate(
+                            city_id=request_body["city_id"],
+                            crime_index=request_body["crime_index"],
+                            safety_index=request_body["safety_index"],
+                            )
+
+            db.session.add(new_crimerate)
+            db.session.commit()
+
+            return {
+                "city": {
+                    "crimerate_id": new_crimerate.crimerate_id,
+                    "city_id": new_crimerate.city_id,
+                    "crime_index": new_crimerate.crime_index,
+                    "safety_index": new_crimerate.safety_index
+                }
+            }, 201
+
+# Get crimerate by ID | Delete crimerate by ID | Edit crimerate by ID
+@crimerates_bp.route("/<crimerate_id>", methods=["GET", "DELETE", "PUT"])
+def handle_crimerate(crimerate_id):
+    crimerate = Crimerate.query.get(crimerate_id)
+    if crimerate is None:
+        return make_response("", 404)
+
+    if request.method == "GET":
+        return {
+                "crimerate_id": crimerate.crimerate_id,
+                "city_id": crimerate.city_id,
+                "crime_index": crimerate.crime_index,
+                "safety_index": crimerate.safety_index
+            }
+    elif request.method == "DELETE":
+        message = {"details": f"Crimerate {crimerate.crimerate_id} \" from City id: {crimerate.city_id}\" successfully deleted"}
+        db.session.delete(crimerate)
+        db.session.commit()
+        return make_response(message)
+    elif request.method == "PUT":
+        form_data = request.get_json()
+        print("form data", form_data )
+
+        crimerate.city_id = form_data["city_id"]
+        crimerate.crime_index = form_data["crime_index"]
+        crimerate.safety_index = form_data["safety_index"]
+
+        db.session.commit()
+
+        return make_response({
+                "crimerate": {
+                    "crimerate_id": crimerate.crimerate_id,
+                    "city_id": crimerate.city_id,
+                    "crime_index": crimerate.crime_index,
+                    "safety_index": crimerate.safety_index
                 }
         })
