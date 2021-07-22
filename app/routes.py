@@ -8,16 +8,10 @@ from dotenv import load_dotenv
 # example_bp = Blueprint('example_bp', __name__)
 load_dotenv()
 
-hello_world_bp = Blueprint("hello_world", __name__)
 cities_bp = Blueprint("cities", __name__, url_prefix="/cities")
 cols_bp = Blueprint("cols", __name__, url_prefix="/cols")
 crimerates_bp = Blueprint("crimerates", __name__, url_prefix="/crimerates")
-# attractions_bp = Blueprint("attractions", __name__, url_prefix="/attractions")
-
-@hello_world_bp.route("/hello-world", methods=["GET"])
-def say_hello_world():
-    my_response_body = "Hello, World!"
-    return my_response_body
+attractions_bp = Blueprint("attractions", __name__, url_prefix="/attractions")
 
 #~~~~~~~~~~~~~~~~~~~city endpoints~~~~~~~~~~~~~~~~~~~
 # Create City | Get all cities
@@ -148,6 +142,33 @@ def get_all_crimerate_by_city(city_id):
                     "crimerate": results
                 }, 200)
 
+# Get all attractions belonging to one city by ID
+@cities_bp.route("/<city_id>/attractions", methods=["GET"])
+def get_all_attraction_by_city(city_id):
+    city = City.query.get(city_id)
+    if city is None:
+        return make_response("", 404)
+
+    if request.method == "GET":
+        attractions = Attraction.query.filter(Attraction.city_id == city_id).order_by(Attraction.attraction_id.desc())
+        results = []
+        for attraction in attractions:
+            print("~~~~~~~~~~~~~~~", attraction.attraction_id)
+            results.append({
+                "attraction_id": attraction.attraction_id,
+                "city_id": attraction.city_id,
+                "name": attraction.name,
+                "description": attraction.description,
+                "image_url": attraction.image_url,  
+            })
+
+        return make_response(
+                {
+                    "city_id": city.city_id,
+                    "city_name": city.city_name,
+                    "attraction": results
+                }, 200)
+
 #~~~~~~~~~~~~~~~~~~~col endpoints~~~~~~~~~~~~~~~~~~~
 # Create col | Get all cols
 @cols_bp.route("", methods=["POST", "GET"])
@@ -158,7 +179,7 @@ def handle_cols():
             for col in cols:
                 cols_response.append({
                     "col_id": col.col_id,
-                    "city_id": city.city_id,
+                    "city_id": col.city_id,
                     "milk_cost": col.milk_cost,
                     "transport_ticket": col.transport_ticket,
                     "gas": col.gas,
@@ -258,7 +279,7 @@ def handle_crimerates():
             for crimerate in crimerates:
                 crimerates_response.append({
                     "crimerate_id": crimerate.crimerate_id,
-                    "city_id": city.city_id,
+                    "city_id": crimerate.city_id,
                     "crime_index": crimerate.crime_index,
                     "safety_index": crimerate.safety_index
                 })
@@ -272,7 +293,7 @@ def handle_crimerates():
             new_crimerate = Crimerate(
                             city_id=request_body["city_id"],
                             crime_index=request_body["crime_index"],
-                            safety_index=request_body["safety_index"],
+                            safety_index=request_body["safety_index"]
                             )
 
             db.session.add(new_crimerate)
@@ -322,5 +343,88 @@ def handle_crimerate(crimerate_id):
                     "city_id": crimerate.city_id,
                     "crime_index": crimerate.crime_index,
                     "safety_index": crimerate.safety_index
+                }
+        })
+
+#~~~~~~~~~~~~~~~~~~~attraction endpoints~~~~~~~~~~~~~~~~~~~
+# Create attraction | Get all attractions
+@attractions_bp.route("", methods=["POST", "GET"])
+def handle_attractions():
+        if request.method == "GET":
+            attractions = Attraction.query.all()
+            attractions_response = []
+            for attraction in attractions:
+                attractions_response.append({
+                    "attraction_id": attraction.attraction_id,
+                    "city_id": attraction.city_id,
+                    "name": attraction.name,
+                    "description": attraction.description,
+                    "image_url": attraction.image_url
+                })
+            return jsonify(attractions_response, 200)
+
+        elif request.method == "POST":
+            request_body = request.get_json()
+
+            if 'city_id' not in request_body or 'name' not in request_body or 'description' not in request_body or 'image_url' not in request_body:
+                return {"details": "Invalid data"}, 400
+            new_attraction = Attraction(
+                            city_id=request_body["city_id"],
+                            name=request_body["name"],
+                            description=request_body["description"],
+                            image_url=request_body["image_url"]
+                            )
+
+            db.session.add(new_attraction)
+            db.session.commit()
+
+            return {
+                "attraction": {
+                    "attraction_id": new_attraction.attraction_id,
+                    "city_id": new_attraction.city_id,
+                    "name": new_attraction.name,
+                    "description": new_attraction.description,
+                    "image_url": new_attraction.image_url
+                }
+            }, 201
+
+# Get attraction by ID | Delete attraction by ID | Edit attraction by ID
+@attractions_bp.route("/<attraction_id>", methods=["GET", "DELETE", "PUT"])
+def handle_attraction(attraction_id):
+    attraction = Attraction.query.get(attraction_id)
+    if attraction is None:
+        return make_response("", 404)
+
+    if request.method == "GET":
+        return {
+                "attraction_id": attraction.attraction_id,
+                "city_id": attraction.city_id,
+                "name": attraction.name,
+                "description": attraction.description,
+                "image_url": attraction.image_url
+            }
+    elif request.method == "DELETE":
+        message = {"details": f"Attraction {attraction.attraction_id} \" from City id: {attraction.city_id}\" successfully deleted"}
+        db.session.delete(attraction)
+        db.session.commit()
+        return make_response(message)
+    elif request.method == "PUT":
+        form_data = request.get_json()
+        print("form data", form_data )
+
+        attraction.city_id = form_data["city_id"]
+        attraction.name = form_data["name"]
+        attraction.description = form_data["description"]
+        attraction.image_url = form_data["image_url"]
+
+        db.session.commit()
+
+        return make_response({
+                "attraction": {
+                    "attraction_id": attraction.attraction_id,
+                    "city_id": attraction.city_id,
+                    "name": attraction.name,
+                    "description": attraction.description,
+                    "image_url": attraction.image_url
                 }
         })

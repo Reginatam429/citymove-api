@@ -26,15 +26,13 @@ def create_app():
     # Endpoints
     # Register Blueprints here
     # from .routes import example_bp
-    from .routes import hello_world_bp
     from .routes import cities_bp
     from .routes import cols_bp
     from .routes import crimerates_bp
-    # from .routes import attractions_bp
-    app.register_blueprint(hello_world_bp)
+    from .routes import attractions_bp
     app.register_blueprint(cities_bp)
     app.register_blueprint(cols_bp)
     app.register_blueprint(crimerates_bp)
-    # app.register_blueprint(attractions_bp)
+    app.register_blueprint(attractions_bp)
 
     return app
